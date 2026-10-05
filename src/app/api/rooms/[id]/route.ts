@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { roomService } from "@/backend/service/room.service";
 import { updateRoomSchema } from "@/backend/utility/room.validators";
 import { getSession } from "@/lib/auth/session";
+import { authService } from "@/backend/service/auth.service";
 
 export async function GET(
   _req: Request,
@@ -42,7 +43,11 @@ export async function PATCH(
       );
     }
 
-    const room = await roomService.update(id, parsed.data, session.role);
+    const account = await authService.me(session.sub);
+    if (!account) {
+      return NextResponse.json({ message: "Conta não encontrada" }, { status: 401 });
+    }
+    const room = await roomService.update(id, parsed.data, account.role);
     if (!room) {
       return NextResponse.json({ message: "Sala não encontrada" }, { status: 404 });
     }
@@ -70,7 +75,11 @@ export async function DELETE(
       return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
     }
     const { id } = await ctx.params;
-    await roomService.remove(id, session.role);
+    const account = await authService.me(session.sub);
+    if (!account) {
+      return NextResponse.json({ message: "Conta não encontrada" }, { status: 401 });
+    }
+    await roomService.remove(id, account.role);
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";

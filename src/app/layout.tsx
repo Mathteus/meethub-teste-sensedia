@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import TanstackProvider from "./tanstack-provider";
 import { AuthProvider } from "@/lib/auth/auth-provider";
 
@@ -34,7 +35,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       >
         <TanstackProvider>
           <AuthProvider>
-            <body className="min-h-full flex flex-col">{children}</body>
+            <NuqsAdapter>
+              <body className="min-h-full flex flex-col">{children}</body>
+            </NuqsAdapter>
           </AuthProvider>
         </TanstackProvider>
       </ThemeProvider>

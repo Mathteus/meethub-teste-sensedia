@@ -7,7 +7,8 @@
     "build": "bun --bun next build",
     "start": "bun --bun next start",
     "format": "bun --bun prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "bun --bun ./node_modules/vitest/vitest.mjs run"
+    "test": "bun --bun ./node_modules/vitest/vitest.mjs run",
+    "seed": "bun seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

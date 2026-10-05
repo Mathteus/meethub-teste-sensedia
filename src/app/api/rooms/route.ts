@@ -2,10 +2,34 @@ import { NextResponse } from "next/server";
 import { roomService } from "@/backend/service/room.service";
 import { createRoomSchema } from "@/backend/utility/room.validators";
 import { getSession } from "@/lib/auth/session";
+import { authService } from "@/backend/service/auth.service";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const rooms = await roomService.list();
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get("date");
+    const q = searchParams.get("q");
+    const resources = searchParams.get("resources");
+    const minParticipantsParam = searchParams.get("minParticipants");
+    const minParticipants = minParticipantsParam
+      ? Number(minParticipantsParam)
+      : null;
+
+    const hasFilters =
+      date || q || resources || (minParticipants !== null && !isNaN(minParticipants));
+
+    const rooms = hasFilters
+      ? await roomService.listFiltered({
+          date,
+          q,
+          resources: resources ? resources.split(",").filter(Boolean) : [],
+          minParticipants:
+            minParticipants !== null && !isNaN(minParticipants)
+              ? minParticipants
+              : null,
+        })
+      : await roomService.list();
+
     return NextResponse.json({ rooms }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
@@ -35,9 +59,17 @@ export async function POST(req: Request) {
       );
     }
 
+    const account = await authService.me(session.sub);
+    if (!account) {
+      return NextResponse.json(
+        { message: "Conta não encontrada" },
+        { status: 401 },
+      );
+    }
+
     const room = await roomService.create(
       { ...parsed.data, createdBy: session.sub },
-      session.role,
+      account.role,
     );
 
     return NextResponse.json({ room }, { status: 201 });

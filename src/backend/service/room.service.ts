@@ -38,6 +38,11 @@ export class RoomService {
     return rows.map(serializeRoom);
   }
 
+  async listFiltered(filters: Parameters<typeof roomRepository.findFiltered>[0]) {
+    const rows = await roomRepository.findFiltered(filters);
+    return rows.map(serializeRoom);
+  }
+
   async getById(id: string) {
     const row = await roomRepository.findById(id);
     return row ? serializeRoom(row) : null;
