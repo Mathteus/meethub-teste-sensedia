@@ -13,6 +13,7 @@ export interface IRoomRepository {
   create(data: RoomInsert): Promise<RoomSelect>;
   findById(id: string): Promise<RoomSelect | null>;
   findAll(): Promise<RoomSelect[]>;
+  findByCreatedBy(createdBy: string): Promise<RoomSelect[]>;
   findFiltered(filters: RoomFilters): Promise<RoomSelect[]>;
   findByRoomNameAndOverlap(
     roomName: string,
@@ -96,6 +97,15 @@ export class RoomRepository implements IRoomRepository {
       .where(conds.length > 0 ? and(...conds) : undefined)
       .orderBy(table.startAt);
     return rows;
+  }
+
+  async findByCreatedBy(createdBy: string): Promise<RoomSelect[]> {
+    const db = await getDb();
+    return db
+      .select()
+      .from(schema.rooms)
+      .where(eq(schema.rooms.createdBy, createdBy))
+      .orderBy(schema.rooms.startAt);
   }
 
   async findByRoomNameAndOverlap(

@@ -276,16 +276,26 @@ export function CreateRoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        {trigger ?? (
-          <Button type="button">
+      <DialogTrigger
+        render={
+          trigger && React.isValidElement(trigger) ? (
+            trigger
+          ) : (
+            <Button type="button" />
+          )
+        }
+      >
+        {trigger && React.isValidElement(trigger) ? (
+          (trigger.props as { children?: React.ReactNode }).children
+        ) : (
+          <>
             {isEditing ? (
               <PencilIcon className="mr-2 size-4" />
             ) : (
               <PlusIcon className="mr-2 size-4" />
             )}
             {isEditing ? "Editar sala" : "Criar sala"}
-          </Button>
+          </>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-160 max-h-[92vh] overflow-y-auto">

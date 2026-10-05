@@ -43,6 +43,11 @@ export class RoomService {
     return rows.map(serializeRoom);
   }
 
+  async listByCreator(createdBy: string) {
+    const rows = await roomRepository.findByCreatedBy(createdBy);
+    return rows.map(serializeRoom);
+  }
+
   async getById(id: string) {
     const row = await roomRepository.findById(id);
     return row ? serializeRoom(row) : null;
@@ -170,10 +175,35 @@ export class RoomService {
     return updated ? serializeRoom(updated) : null;
   }
 
-  async remove(id: string, actorRole?: Role | "USER" | "ADMIN") {
-    ensureAdmin(actorRole);
+  async join(id: string, username: string) {
     const existing = await roomRepository.findById(id);
     if (!existing) throw new Error("Sala não encontrada");
+
+    if (existing.participants.includes(username)) {
+      return serializeRoom(existing);
+    }
+
+    const updated = await roomRepository.update(existing.id, {
+      participants: [...existing.participants, username],
+    });
+    return updated ? serializeRoom(updated) : null;
+  }
+
+  async remove(
+    id: string,
+    actorRole?: Role | "USER" | "ADMIN",
+    actorId?: string,
+  ) {
+    const existing = await roomRepository.findById(id);
+    if (!existing) throw new Error("Sala não encontrada");
+
+    const isOwner = !!actorId && existing.createdBy === actorId;
+    if (actorRole !== "ADMIN" && !isOwner) {
+      throw new Error(
+        "Acesso negado: apenas administradores ou o criador podem cancelar a reserva",
+      );
+    }
+
     return roomRepository.remove(existing.id);
   }
 }

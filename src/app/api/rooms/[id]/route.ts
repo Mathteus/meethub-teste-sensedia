@@ -79,7 +79,7 @@ export async function DELETE(
     if (!account) {
       return NextResponse.json({ message: "Conta não encontrada" }, { status: 401 });
     }
-    await roomService.remove(id, account.role);
+    await roomService.remove(id, account.role, session.sub);
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";

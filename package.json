@@ -8,7 +8,9 @@
     "start": "bun --bun next start",
     "format": "bun --bun prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "bun --bun ./node_modules/vitest/vitest.mjs run",
-    "seed": "bun seed.ts"
+    "seed": "bun seed.ts",
+    "cypress:open": "node node_modules/cypress/bin/cypress open",
+    "cypress:run": "node node_modules/cypress/bin/cypress run"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -44,6 +46,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cypress": "^16.1.1",
     "drizzle-kit": "^1.0.0-rc.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",

@@ -33,19 +33,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const passwordRegex =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':",./<>?|\\~`]).{3,20}$/;
 
 const signupSchema = z
   .object({
-    username: z.string().min(3, "Username deve ter no mínimo 3 caracteres").max(100),
+    username: z
+      .string()
+      .min(3, "Username deve ter no mínimo 3 caracteres")
+      .max(100),
     email: z.string().email("E-mail inválido"),
     password: z
       .string()
@@ -81,7 +79,13 @@ export default function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { email: "", username: "", password: "", confirmPassword: "", role: "USER" },
+    defaultValues: {
+      email: "",
+      username: "",
+      password: "",
+      confirmPassword: "",
+      role: "USER",
+    },
   });
 
   const roleValue = watch("role");
@@ -107,7 +111,9 @@ export default function RegisterPage() {
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
             <Tabs
               value={roleValue}
-              onValueChange={(value) => setValue("role", value as Role, { shouldValidate: true })}
+              onValueChange={(value) =>
+                setValue("role", value as Role, { shouldValidate: true })
+              }
             >
               <TabsList className="w-full grid grid-cols-2">
                 <TabsTrigger value="USER" className="gap-2">
@@ -173,7 +179,9 @@ export default function RegisterPage() {
                     type="button"
                     size="icon-xs"
                     onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    aria-label={
+                      showPassword ? "Ocultar senha" : "Mostrar senha"
+                    }
                   >
                     {showPassword ? (
                       <EyeOffIcon className="size-4" />

@@ -53,15 +53,23 @@ export function DeleteRoomDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger>
-        {trigger ?? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2Icon />
-          </Button>
+      <AlertDialogTrigger
+        render={
+          trigger && React.isValidElement(trigger) ? (
+            trigger
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:text-destructive"
+            />
+          )
+        }
+      >
+        {trigger && React.isValidElement(trigger) ? (
+          (trigger.props as { children?: React.ReactNode }).children
+        ) : (
+          <Trash2Icon />
         )}
       </AlertDialogTrigger>
       <AlertDialogContent>

@@ -11,9 +11,22 @@ export async function GET(req: Request) {
     const q = searchParams.get("q");
     const resources = searchParams.get("resources");
     const minParticipantsParam = searchParams.get("minParticipants");
+    const mine = searchParams.get("mine") === "true";
     const minParticipants = minParticipantsParam
       ? Number(minParticipantsParam)
       : null;
+
+    if (mine) {
+      const session = await getSession();
+      if (!session) {
+        return NextResponse.json(
+          { message: "Não autenticado" },
+          { status: 401 },
+        );
+      }
+      const rooms = await roomService.listByCreator(session.sub);
+      return NextResponse.json({ rooms }, { status: 200 });
+    }
 
     const hasFilters =
       date || q || resources || (minParticipants !== null && !isNaN(minParticipants));

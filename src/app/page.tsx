@@ -59,8 +59,10 @@ import {
 } from "nuqs";
 
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateRoomDialog, type RoomResource } from "@/components/create-room";
 import { DeleteRoomDialog } from "@/components/delete-room-dialog";
+import { RoomDetailsDialog } from "@/components/room-details-dialog";
 import { RealTimeClock } from "@/components/realtime-clock";
 import { Recurces } from "@/backend/entity/room.types";
 
@@ -85,14 +87,20 @@ interface RoomFilters {
   minParticipants: number | null;
 }
 
-async function fetchRooms(filters: RoomFilters): Promise<RoomResource[]> {
+async function fetchRooms(
+  filters: RoomFilters,
+  mine: boolean,
+): Promise<RoomResource[]> {
   const params = new URLSearchParams();
-  if (filters.date) params.set("date", filters.date);
-  if (filters.q) params.set("q", filters.q);
-  if (filters.resources.length > 0)
-    params.set("resources", filters.resources.join(","));
-  if (filters.minParticipants !== null)
-    params.set("minParticipants", String(filters.minParticipants));
+  if (mine) params.set("mine", "true");
+  else {
+    if (filters.date) params.set("date", filters.date);
+    if (filters.q) params.set("q", filters.q);
+    if (filters.resources.length > 0)
+      params.set("resources", filters.resources.join(","));
+    if (filters.minParticipants !== null)
+      params.set("minParticipants", String(filters.minParticipants));
+  }
 
   const res = await fetch(`/api/rooms?${params.toString()}`, {
     credentials: "include",
@@ -121,13 +129,19 @@ function formatRange(startAt: string, durationMinutes: number) {
 
 interface CardRoomProps extends RoomResource {
   isAdmin: boolean;
+  currentUserId?: string;
   onEdit: (room: RoomResource) => void;
+  onOpenDetails: (room: RoomResource) => void;
 }
 
 function CardRoom(props: CardRoomProps) {
   const span = formatRange(props.startAt, props.durationMinutes);
+  const canDelete = props.isAdmin || props.createdBy === props.currentUserId;
   return (
-    <Card className="flex h-full flex-col transition-shadow hover:shadow-md">
+    <Card
+      className="flex h-full cursor-pointer flex-col transition-shadow hover:shadow-md"
+      onClick={() => props.onOpenDetails(props)}
+    >
       <CardHeader>
         <div>
           <Badge variant="secondary" className="gap-1 mb-2">
@@ -170,10 +184,27 @@ function CardRoom(props: CardRoomProps) {
             </Badge>
           ))
         )}
-        {props.isAdmin && (
-          <div className="ml-auto inline-flex items-center gap-2">
-            <CreateRoomDialog room={props} />
-            <DeleteRoomDialog roomId={props.id} roomTitle={props.title} />
+        {(props.isAdmin || canDelete) && (
+          <div
+            className="ml-auto inline-flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {props.isAdmin && <CreateRoomDialog room={props} />}
+            {canDelete && (
+              <DeleteRoomDialog
+                roomId={props.id}
+                roomTitle={props.title}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                  >
+                    Cancelar presença
+                  </Button>
+                }
+              />
+            )}
           </div>
         )}
       </CardFooter>
@@ -187,6 +218,9 @@ export default function Home() {
   const { setTheme, theme } = useTheme();
   const [editingRoom, setEditingRoom] = useState<RoomResource | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailsRoom, setDetailsRoom] = useState<RoomResource | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [tab, setTab] = useState<"all" | "mine">("all");
 
   const [filters, setFilters] = useQueryStates({
     date: parseAsString,
@@ -208,8 +242,8 @@ export default function Home() {
   }, [searchInput]);
 
   const roomsQuery = useQuery({
-    queryKey: ["rooms", filters],
-    queryFn: () => fetchRooms(filters),
+    queryKey: ["rooms", filters, tab],
+    queryFn: () => fetchRooms(filters, tab === "mine"),
     staleTime: 1000 * 60,
     placeholderData: keepPreviousData,
     enabled: status !== "loading",
@@ -236,7 +270,9 @@ export default function Home() {
 
   const isAdmin = user?.role === "ADMIN";
 
-  const selectedDate = filters.date ? new Date(`${filters.date}T00:00:00`) : undefined;
+  const selectedDate = filters.date
+    ? new Date(`${filters.date}T00:00:00`)
+    : undefined;
 
   if (status === "loading" || roomsQuery.isLoading) {
     return (
@@ -390,14 +426,24 @@ export default function Home() {
           </CardContent>
         </Card>
 
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as "all" | "mine")}
+          className="mb-4"
+        >
+          <TabsList>
+            <TabsTrigger value="all">Todas as Salas</TabsTrigger>
+            <TabsTrigger value="mine">Minhas Salas</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <section className="grid min-h-[300px] grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {roomsQuery.isError && (
             <div className="col-span-full text-center text-sm text-destructive">
               Erro ao carregar reservas: {(roomsQuery.error as Error).message}
             </div>
           )}
-          {!roomsQuery.isError &&
-          (roomsQuery.data?.length ?? 0) === 0 ? (
+          {!roomsQuery.isError && (roomsQuery.data?.length ?? 0) === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
               <CalendarIcon className="size-8 opacity-40" />
               <p className="text-sm">
@@ -421,15 +467,26 @@ export default function Home() {
                 key={item.id}
                 {...item}
                 isAdmin={isAdmin}
+                currentUserId={user.id}
                 onEdit={(room) => {
                   setEditingRoom(room);
                   setDialogOpen(true);
+                }}
+                onOpenDetails={(room) => {
+                  setDetailsRoom(room);
+                  setDetailsOpen(true);
                 }}
               />
             ))
           )}
         </section>
       </main>
+
+      <RoomDetailsDialog
+        room={detailsRoom}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
     </>
   );
 }
