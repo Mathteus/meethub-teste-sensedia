@@ -1,0 +1,63 @@
+services:
+  # 1. Banco de Dados PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: next_postgres
+    environment:
+      POSTGRES_USER: next_user
+      POSTGRES_PASSWORD: next_password
+      POSTGRES_DB: next_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - next_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U next_user -d next_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+    # 3. API NestJS (Bun)
+    # api:
+    # build:
+    # context: .
+    # dockerfile: Dockerfile
+    # container_name: next_api
+    # environment:
+    # DATABASE_URL: 'postgresql://nest_user:nest_password@postgres:5432/nest_db?schema=public'
+    # REDIS_HOST: 'redis'
+    # REDIS_PORT: 6379
+    # PORT: 3333
+    # Não expõe a porta 3000 para o mundo exterior, apenas para a rede interna
+    # expose:
+    # - '3333'
+    # depends_on:
+    # postgres:
+    # condition: service_healthy
+    # redis:
+    #   condition: service_healthy
+    # networks:
+    # - nest_network
+
+    # 4. Servidor Web/Proxy Reverso Nginx
+    # nginx:
+    # image: nginx:alpine
+    # container_name: nest_nginx
+    # ports:
+    # - '80:80'
+    # volumes:
+    # - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    # depends_on:
+    # - api
+    # networks:
+    # - nest_network
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  next_network:
+    driver: bridge
