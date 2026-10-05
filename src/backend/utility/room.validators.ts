@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Recurces } from "../entity/room";
+import { Recurces } from "../entity/room.types";
 
 const PHYSICAL_ROOMS = [
   "Sala A",
