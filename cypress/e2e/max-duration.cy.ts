@@ -6,6 +6,12 @@ describe("Duração Máxima por Sala", () => {
     });
   });
 
+  // Os popups fechados do Base UI permanecem montados no DOM, então
+  // [data-slot="select-option"] sozinho é ambíguo quando há vários selects
+  // na tela. Sempre escopamos ao popup realmente aberto.
+  const openOptions = () =>
+    cy.get('[data-slot="select-content"][data-open] [data-slot="select-option"]');
+
   it("exibe a duração máxima personalizada em cada card na listagem", () => {
     cy.visit("/");
 
@@ -45,11 +51,11 @@ describe("Duração Máxima por Sala", () => {
 
     // Ajusta o limite máximo da sala para 8 horas (480 minutos)
     cy.get('[data-testid="max-duration-trigger"]').click();
-    cy.contains('[data-slot="select-option"]', "8 horas").click({ force: true });
+    openOptions().contains("8 horas").click();
 
     // Seleciona a duração da reserva (ex: 4 horas)
     cy.get('[data-testid="duration-trigger"]').click();
-    cy.contains('[data-slot="select-option"]', "4 horas").click({ force: true });
+    openOptions().contains("4 horas").click();
 
     cy.get('button[type="submit"]').click();
 
@@ -69,13 +75,13 @@ describe("Duração Máxima por Sala", () => {
 
     // Define limite máximo da sala como 30 minutos
     cy.get('[data-testid="max-duration-trigger"]').click();
-    cy.contains('[data-slot="select-option"]', "30 minutos").click({ force: true });
+    openOptions().contains("30 minutos").click();
 
     // Ao abrir o seletor de duração, não devem aparecer opções maiores que 30 minutos (como 2 horas, 4 horas)
     cy.get('[data-testid="duration-trigger"]').click();
-    cy.contains('[data-slot="select-option"]', "30 minutos").should("be.visible");
-    cy.contains('[data-slot="select-option"]', "15 minutos").should("be.visible");
-    cy.contains('[data-slot="select-option"]', "2 horas").should("not.exist");
-    cy.contains('[data-slot="select-option"]', "4 horas").should("not.exist");
+    openOptions().contains("30 minutos").should("be.visible");
+    openOptions().contains("15 minutos").should("be.visible");
+    openOptions().contains("2 horas").should("not.exist");
+    openOptions().contains("4 horas").should("not.exist");
   });
 });

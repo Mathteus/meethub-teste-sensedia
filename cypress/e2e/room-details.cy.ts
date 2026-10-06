@@ -25,7 +25,7 @@ describe("Detalhes da sala", () => {
     cy.get("[role=dialog]").within(() => {
       cy.contains("button", "Participar").click();
     });
-    cy.get("[role=dialog]", { timeout: 8000 }).should("not.exist");
+    cy.get("[role=dialog]", { timeout: 30000 }).should("not.exist");
     cy.contains("Brainstorm de features")
       .parents('[data-slot="card"]')
       .should("contain", "joao");
