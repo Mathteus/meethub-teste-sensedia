@@ -8,6 +8,7 @@
     "start": "bun --bun next start",
     "format": "bun --bun prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "vitest run",
+    "seed": "bun seed.ts",
     "cypress:run": "cypress run",
     "cypress:open": "cypress open"
   },
@@ -41,6 +42,7 @@
     "@tanstack/eslint-plugin-query": "^5.104.1",
     "@tanstack/react-query-devtools": "^5.104.1",
     "@types/bun": "^1.4.2",
+    "cypress": "^16.1.1",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",

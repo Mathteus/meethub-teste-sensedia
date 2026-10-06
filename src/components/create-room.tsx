@@ -333,7 +333,7 @@ export function CreateRoomDialog({
             ) : (
               <PlusIcon className="mr-2 size-4" />
             )}
-            {isEditing ? "Editar sala" : "Criar sala"}
+            {isEditing ? "Editar reserva" : "Criar reserva"}
           </>
         )}
       </DialogTrigger>

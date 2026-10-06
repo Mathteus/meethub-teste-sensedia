@@ -127,6 +127,13 @@ function formatRange(startAt: string, durationMinutes: number) {
   };
 }
 
+function formatMaxDuration(maxDurationMinutes?: number) {
+  const minutes = maxDurationMinutes ?? 240;
+  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60}h máx`;
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}h${minutes % 60} máx`;
+  return `${minutes}min máx`;
+}
+
 interface CardRoomProps extends RoomResource {
   isAdmin: boolean;
   currentUserId?: string;
@@ -157,9 +164,14 @@ function CardRoom(props: CardRoomProps) {
             <ClockIcon className="size-3.5" /> {span.time}
           </div>
           <div className="text-xs text-muted-foreground">{span.date}</div>
-          <Badge variant="outline" className="text-xs">
-            {span.duration}
-          </Badge>
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            <Badge variant="outline" className="text-xs">
+              {span.duration}
+            </Badge>
+            <Badge variant="secondary" className="text-xs">
+              {formatMaxDuration(props.maxDurationMinutes)}
+            </Badge>
+          </div>
         </CardAction>
       </CardHeader>
       <CardContent>
