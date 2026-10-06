@@ -1,4 +1,4 @@
-import { randomUUIDv7 } from "bun";
+import { randomUUIDv7 } from "../utility/uuid";
 import { Password } from "../utility/password";
 import { Replace } from "../utility";
 

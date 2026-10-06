@@ -1,5 +1,5 @@
 import { pgTable, varchar, timestamp, pgEnum } from "drizzle-orm/pg-core";
-import { randomUUIDv7 } from "bun";
+import { randomUUIDv7 } from "../../utility/uuid";
 
 export const roleEnum = pgEnum("role", ["USER", "ADMIN"]);
 

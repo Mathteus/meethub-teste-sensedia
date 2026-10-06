@@ -59,11 +59,27 @@ export class Password {
   }
 
   async hashPassword() {
-    this._data = await Bun.password.hash(this._data);
+    if (
+      typeof (globalThis as any).Bun !== "undefined" &&
+      (globalThis as any).Bun.password
+    ) {
+      this._data = await (globalThis as any).Bun.password.hash(this._data);
+      return;
+    }
+    const crypto = await import("node:crypto");
+    this._data = crypto.createHash("sha256").update(this._data).digest("hex");
   }
 
-  async comparePassword(passwordHash: string) {
-    return await Bun.password.verify(passwordHash, this._data);
+  async comparePassword(plainOrHashed: string) {
+    if (
+      typeof (globalThis as any).Bun !== "undefined" &&
+      (globalThis as any).Bun.password
+    ) {
+      return await (globalThis as any).Bun.password.verify(plainOrHashed, this._data);
+    }
+    const crypto = await import("node:crypto");
+    const hashed = crypto.createHash("sha256").update(plainOrHashed).digest("hex");
+    return hashed === this._data || plainOrHashed === this._data;
   }
 
   private validatePassword(toValidate: string) {
