@@ -4,6 +4,31 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [Não publicado]
+
+### Adicionado
+
+- **Duração máxima por sala**: o limite fixo de 4 horas foi substituído por `maxDurationMinutes`, configurável por sala (15 min a 24 h). O formulário de criar/editar sala ganhou o campo "Duração máxima desta sala" e o select de duração passa a oferecer apenas opções dentro do limite da sala.
+- **Exibição do limite** no dialog de detalhes da sala ("Limite desta sala: X min").
+- **Testes**: novos casos no `room.service.spec.ts` para duração abaixo do mínimo, acima do limite padrão, acima do limite por sala, limite inválido, e validação/aumento do limite no `update`.
+
+### Alterado
+
+- `rooms` ganhou a coluna `max_duration_minutes` (`NOT NULL DEFAULT 240`); `serializeRoom`, `createRoomSchema` (refine de coerência) e `updateRoomSchema` foram atualizados.
+- Validação no `RoomService` agora usa `validateDuration(durationMinutes, maxDurationMinutes)` com mensagens específicas.
+
+### Corrigido
+
+Correções de infraestrutura feitas durante a implementação acima. **Não fazem parte da funcionalidade da duração máxima** — foram necessárias porque o build e a aplicação estavam quebrados de forma independente dela.
+
+- **`import { randomUUIDv7 } from "bun"` incompatível com o bundler**: o import literal de `bun` não é resolvido pelo webpack (`Cannot find module 'bun'`) nem empacotado corretamente pelo Turbopack (`Failed to load external module pg-<hash>`). Criado `src/backend/utility/uuid.ts` com um gerador de UUID v7 baseado em `crypto.getRandomValues`, usando `Bun.randomUUIDv7` quando disponível. Afetou `schema/accounts.ts`, `schema/rooms.ts`, `entity/account.entity.ts` e `entity/room.ts` — o comportamento de geração de ID permanece idêntico.
+- **`textArray` inexistente no Drizzle**: `schema/rooms.ts` importava `textArray`, que não é exportado pela versão instalada do `drizzle-orm`, quebrando qualquer rota que importasse o schema. Substituído por `text("participants").array()`.
+- **Schema divergente do banco**: a tabela `rooms` no PostgreSQL tinha `resources` como `jsonb`, enquanto o schema Drizzle declara `varchar[]`. A coluna foi convertida para `varchar(255)[]` e o filtro por recurso no repositório passou a usar `= ANY(resources)` no lugar do operador `jsonb @>`. O `seed.sql` foi atualizado para o novo tipo e passou a popular `max_duration_minutes` com limites variados por sala (60 a 480 min).
+- **`database/index.ts`**: exports de `getDb`/`schema` removidos para evitar um erro de resolução do Turbopack; `room.repository.ts` passou a importar `db` e o schema diretamente.
+- **Scripts com webpack**: `dev` e `build` passaram a usar `--webpack`, contornando o bug de external module do Turbopack com `pg`/`drizzle-orm` na versão atual do Next 16.
+- `room.validators.ts` importava `Recurces` de `../entity/room` (que puxa `bun` para o bundle do browser); agora importa de `../entity/room.types`.
+- **Arquivos perdidos restaurados**: 32 arquivos novos (componentes, rotas de API, specs, `seed.ts`, `cypress/`) sumiram do working tree e foram recuperados do commit `71fc5b1`.
+
 ## [1.1.0] - 2026-10-05
 
 ### Adicionado

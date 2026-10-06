@@ -1,11 +1,21 @@
-import { and, eq, or, sql, lte, gte, ne, between } from "drizzle-orm";
-import { getDb, schema } from "../database";
+import { and, eq, or, sql, lte, gte, ne, ilike } from "drizzle-orm";
+import { db } from "../database";
+import * as schema from "../database/schema";
 import type { RoomInsert, RoomSelect } from "../database/schema/rooms";
+
+export interface RoomFilters {
+  date?: string | null;
+  q?: string | null;
+  resources?: string[];
+  minParticipants?: number | null;
+}
 
 export interface IRoomRepository {
   create(data: RoomInsert): Promise<RoomSelect>;
   findById(id: string): Promise<RoomSelect | null>;
   findAll(): Promise<RoomSelect[]>;
+  findByCreatedBy(createdBy: string): Promise<RoomSelect[]>;
+  findFiltered(filters: RoomFilters): Promise<RoomSelect[]>;
   findByRoomNameAndOverlap(
     roomName: string,
     startAt: Date,
@@ -18,13 +28,11 @@ export interface IRoomRepository {
 
 export class RoomRepository implements IRoomRepository {
   async create(data: RoomInsert): Promise<RoomSelect> {
-    const db = await getDb();
     const [created] = await db.insert(schema.rooms).values(data).returning();
     return created;
   }
 
   async findById(id: string): Promise<RoomSelect | null> {
-    const db = await getDb();
     const rows = await db
       .select()
       .from(schema.rooms)
@@ -34,12 +42,67 @@ export class RoomRepository implements IRoomRepository {
   }
 
   async findAll(): Promise<RoomSelect[]> {
-    const db = await getDb();
     const rows = await db
       .select()
       .from(schema.rooms)
       .orderBy(schema.rooms.startAt);
     return rows;
+  }
+
+  async findByCreatedBy(createdBy: string): Promise<RoomSelect[]> {
+    return db
+      .select()
+      .from(schema.rooms)
+      .where(eq(schema.rooms.createdBy, createdBy))
+      .orderBy(schema.rooms.startAt);
+  }
+
+  async findFiltered(filters: RoomFilters): Promise<RoomSelect[]> {
+    const table = schema.rooms;
+    const conds = [];
+
+    if (filters.date) {
+      const start = new Date(`${filters.date}T00:00:00.000Z`);
+      if (!isNaN(start.getTime())) {
+        const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+        conds.push(gte(table.startAt, start));
+        conds.push(sql`${table.startAt} < ${end}`);
+      }
+    }
+
+    if (filters.q?.trim()) {
+      const like = `%${filters.q.trim()}%`;
+      conds.push(
+        or(
+          ilike(table.title, like),
+          ilike(table.description, like),
+          ilike(table.roomName, like),
+          sql`array_to_string(${table.participants}, ',') ILIKE ${like}`,
+        ),
+      );
+    }
+
+    if (filters.resources && filters.resources.length > 0) {
+      conds.push(
+        or(
+          ...filters.resources.map(
+            (r) => sql`${r} = ANY(${table.resources})`,
+          ),
+        ),
+      );
+    }
+
+    if (filters.minParticipants != null && filters.minParticipants >= 0) {
+      conds.push(
+        sql`cardinality(${table.participants}) >= ${filters.minParticipants}`,
+      );
+    }
+
+    return db
+      .select()
+      .from(table)
+      .where(conds.length > 0 ? and(...conds) : undefined)
+      .orderBy(table.startAt);
   }
 
   async findByRoomNameAndOverlap(
@@ -48,7 +111,6 @@ export class RoomRepository implements IRoomRepository {
     endAt: Date,
     excludeId?: string,
   ): Promise<RoomSelect[]> {
-    const db = await getDb();
     const table = schema.rooms;
     const endExpr = sql<Date>`${table.startAt} + (${table.durationMinutes} || ' minutes')::interval`;
 
@@ -70,7 +132,6 @@ export class RoomRepository implements IRoomRepository {
     id: string,
     data: Partial<RoomInsert>,
   ): Promise<RoomSelect | null> {
-    const db = await getDb();
     const payload = { ...data, updatedAt: new Date() } as Partial<RoomInsert>;
     const rows = await db
       .update(schema.rooms)
@@ -81,10 +142,7 @@ export class RoomRepository implements IRoomRepository {
   }
 
   async remove(id: string): Promise<boolean> {
-    const db = await getDb();
-    const result = await db
-      .delete(schema.rooms)
-      .where(eq(schema.rooms.id, id));
+    const result = await db.delete(schema.rooms).where(eq(schema.rooms.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 }

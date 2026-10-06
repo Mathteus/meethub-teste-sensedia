@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "bun --bun next dev",
-    "build": "bun --bun next build",
+    "dev": "bun --bun next dev --webpack",
+    "build": "bun --bun next build --webpack",
     "start": "bun --bun next start",
     "format": "bun --bun prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "bun --bun ./node_modules/vitest/vitest.mjs run"
+    "test": "vitest run",
+    "cypress:run": "cypress run",
+    "cypress:open": "cypress open"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

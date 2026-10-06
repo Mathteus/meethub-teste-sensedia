@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Recurces } from "../entity/room";
+import { Recurces } from "../entity/room.types";
 
 const PHYSICAL_ROOMS = [
   "Sala A",
@@ -36,12 +36,24 @@ const baseRoomFields = {
   durationMinutes: z
     .number({ invalid_type_error: "Duração é obrigatória" })
     .int("Duração deve ser inteira")
-    .min(15, "Duração mínima é de 15 minutos")
-    .max(240, "Duração máxima é de 4 horas (240 minutos)"),
+    .min(15, "Duração mínima é de 15 minutos"),
+  maxDurationMinutes: z
+    .number({ invalid_type_error: "Informe a duração máxima da sala" })
+    .int("A duração máxima deve ser inteira")
+    .min(15, "A duração máxima da sala deve ser no mínimo 15 minutos")
+    .max(1440, "A duração máxima da sala deve ser no máximo 24 horas (1440 minutos)")
+    .optional()
+    .default(240),
   resources: z.array(resourceEnum).optional().default([]),
 };
 
-export const createRoomSchema = z.object(baseRoomFields);
+export const createRoomSchema = z
+  .object(baseRoomFields)
+  .refine((data) => data.durationMinutes <= data.maxDurationMinutes, {
+    message:
+      "A duração não pode ser maior que a duração máxima permitida para a sala",
+    path: ["durationMinutes"],
+  });
 
 export const updateRoomSchema = z.object({
   title: baseRoomFields.title.optional(),
@@ -50,6 +62,7 @@ export const updateRoomSchema = z.object({
   participants: baseRoomFields.participants.optional(),
   startAt: baseRoomFields.startAt.optional(),
   durationMinutes: baseRoomFields.durationMinutes.optional(),
+  maxDurationMinutes: baseRoomFields.maxDurationMinutes.optional(),
   resources: baseRoomFields.resources.optional(),
 });
 

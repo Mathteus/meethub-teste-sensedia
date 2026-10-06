@@ -15,15 +15,32 @@ describe("Room Entity System Test", () => {
     ).toBeTruthy();
   });
 
-  it("should be possible to create an room entity from another one.", () => {
+  it("should support custom maxDurationMinutes", () => {
+    const room = new Room({
+      title: "Test Room",
+      description: "Test Description",
+      participants: [],
+      date: new Date(),
+      maxDurationMinutes: 120,
+      resource: [],
+      duration: 60,
+    });
+    expect(room.maxDurationMinutes).toBe(120);
+    expect(room.duration).toBe(60);
+
+    const clone = new Room(room);
+    expect(clone.maxDurationMinutes).toBe(120);
+  });
+
+  it("should default maxDurationMinutes to 240 if not provided", () => {
     const room = new Room({
       title: "Test Room",
       description: "Test Description",
       participants: [],
       date: new Date(),
       resource: [],
-      duration: 0,
+      duration: 30,
     });
-    expect(new Room(room)).toBeTruthy();
+    expect(room.maxDurationMinutes).toBe(240);
   });
 });

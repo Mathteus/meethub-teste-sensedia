@@ -1,4 +1,4 @@
-import { randomUUIDv7 } from "bun";
+import { randomUUIDv7 } from "../utility/uuid";
 import { Replace } from "../utility";
 
 export enum Recurces {
@@ -21,6 +21,7 @@ export interface IRoom {
   description: string;
   participants: string[];
   date: Date;
+  maxDurationMinutes?: number;
   resource: Recurces[];
   duration: number;
 }
@@ -31,6 +32,7 @@ export class Room {
   private _description: string;
   private _participants: string[];
   private _date: Date;
+  private _maxDurationMinutes: number;
   private _resource: Recurces[];
   private _duration: number;
 
@@ -41,6 +43,7 @@ export class Room {
       this._description = room._description;
       this._participants = room._participants;
       this._date = room._date;
+      this._maxDurationMinutes = room._maxDurationMinutes;
       this._resource = room._resource;
       this._duration = room._duration;
       return;
@@ -51,6 +54,7 @@ export class Room {
     this._description = room.description;
     this._participants = room.participants;
     this._date = room.date;
+    this._maxDurationMinutes = room.maxDurationMinutes ?? 240;
     this._resource = room.resource;
     this._duration = room.duration;
   }
@@ -73,6 +77,10 @@ export class Room {
 
   get date(): Date {
     return this._date;
+  }
+
+  get maxDurationMinutes(): number {
+    return this._maxDurationMinutes;
   }
 
   get resource(): Recurces[] {

@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { format, isSameDay } from "date-fns";
+import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -47,28 +47,24 @@ import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect, Option } from "@/components/ui/multi-select";
 import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
-import { useAuth, type Role } from "@/lib/auth/auth-provider";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  SearchAutocomplete,
-  AutocompleteOption,
-} from "@/components/ui/search-autocomplete";
+  parseAsArrayOf,
+  parseAsInteger,
+  parseAsString,
+  useQueryStates,
+} from "nuqs";
+
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateRoomDialog, type RoomResource } from "@/components/create-room";
 import { DeleteRoomDialog } from "@/components/delete-room-dialog";
+import { RoomDetailsDialog } from "@/components/room-details-dialog";
 import { RealTimeClock } from "@/components/realtime-clock";
-import { Recurces } from "@/backend/entity/room";
-
-const PARTICIPANTS: AutocompleteOption[] = [
-  { label: "Adriele Brito Santos", value: "usr_1" },
-  { label: "Lucas Silva", value: "usr_2" },
-  { label: "Gabriel Santos", value: "usr_3" },
-  { label: "Mariana Oliveira", value: "usr_4" },
-  { label: "Beatriz Costa", value: "usr_5" },
-];
+import { Recurces } from "@/backend/entity/room.types";
 
 const ROOM_RESOURCES: Option[] = [
   { label: "Wi-Fi", value: Recurces.WIFI },
@@ -84,8 +80,29 @@ const ROOM_RESOURCES: Option[] = [
   { label: "Frigobar", value: Recurces.MINI_FRIDGE },
 ];
 
-async function fetchRooms(): Promise<RoomResource[]> {
-  const res = await fetch("/api/rooms", {
+interface RoomFilters {
+  date: string | null;
+  q: string | null;
+  resources: string[];
+  minParticipants: number | null;
+}
+
+async function fetchRooms(
+  filters: RoomFilters,
+  mine: boolean,
+): Promise<RoomResource[]> {
+  const params = new URLSearchParams();
+  if (mine) params.set("mine", "true");
+  else {
+    if (filters.date) params.set("date", filters.date);
+    if (filters.q) params.set("q", filters.q);
+    if (filters.resources.length > 0)
+      params.set("resources", filters.resources.join(","));
+    if (filters.minParticipants !== null)
+      params.set("minParticipants", String(filters.minParticipants));
+  }
+
+  const res = await fetch(`/api/rooms?${params.toString()}`, {
     credentials: "include",
     cache: "no-store",
   });
@@ -112,80 +129,86 @@ function formatRange(startAt: string, durationMinutes: number) {
 
 interface CardRoomProps extends RoomResource {
   isAdmin: boolean;
+  currentUserId?: string;
   onEdit: (room: RoomResource) => void;
+  onOpenDetails: (room: RoomResource) => void;
 }
 
 function CardRoom(props: CardRoomProps) {
   const span = formatRange(props.startAt, props.durationMinutes);
+  const canDelete = props.isAdmin || props.createdBy === props.currentUserId;
   return (
-    <div className="p-2">
-      <Card className="h-full">
-        <CardHeader>
-          <div>
-            <Badge variant="secondary" className="gap-1 mb-1">
-              <MapPinIcon className="size-3" /> {props.roomName}
-            </Badge>
+    <Card
+      className="flex h-full cursor-pointer flex-col transition-shadow hover:shadow-md"
+      onClick={() => props.onOpenDetails(props)}
+    >
+      <CardHeader>
+        <div>
+          <Badge variant="secondary" className="gap-1 mb-2">
+            <MapPinIcon className="size-3" /> {props.roomName}
+          </Badge>
+        </div>
+        <CardTitle className="text-lg">{props.title}</CardTitle>
+        <CardDescription className="line-clamp-2">
+          {props.description || "Sem descrição"}
+        </CardDescription>
+        <CardAction className="flex flex-col items-end gap-1">
+          <div className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
+            <ClockIcon className="size-3.5" /> {span.time}
           </div>
-          <CardTitle className="text-lg">{props.title}</CardTitle>
-          <CardDescription className="line-clamp-2">
-            {props.description || "Sem descrição"}
-          </CardDescription>
-          <CardAction className="flex flex-col items-end gap-1">
-            <div className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
-              <ClockIcon className="size-3.5" /> {span.time}
-            </div>
-            <div className="text-xs text-muted-foreground">{span.date}</div>
-            <div className="text-xs text-muted-foreground">{span.duration}</div>
-            {props.isAdmin && (
-              <div className="flex items-center gap-1 pt-2">
-                <DeleteRoomDialog
-                  roomId={props.id}
-                  roomTitle={props.title}
-                  trigger={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <PencilIcon className="hidden" />
-                    </Button>
-                  }
-                />
-              </div>
+          <div className="text-xs text-muted-foreground">{span.date}</div>
+          <Badge variant="outline" className="text-xs">
+            {span.duration}
+          </Badge>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <p className="flex items-start gap-2 text-sm">
+          <UsersIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <span>
+            {props.participants.length > 0
+              ? `${props.participants.length} participante(s): ${props.participants.join(", ")}`
+              : "Nenhum participante cadastrado"}
+          </span>
+        </p>
+      </CardContent>
+      <CardFooter className="mt-auto flex flex-wrap items-center gap-2 justify-start">
+        {props.resources.length === 0 ? (
+          <span className="text-xs text-muted-foreground">
+            Nenhum resource selecionado
+          </span>
+        ) : (
+          props.resources.map((item) => (
+            <Badge variant="default" key={`${props.id}-${item}`}>
+              {item}
+            </Badge>
+          ))
+        )}
+        {(props.isAdmin || canDelete) && (
+          <div
+            className="ml-auto inline-flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {props.isAdmin && <CreateRoomDialog room={props} />}
+            {canDelete && (
+              <DeleteRoomDialog
+                roomId={props.id}
+                roomTitle={props.title}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                  >
+                    Cancelar presença
+                  </Button>
+                }
+              />
             )}
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <p className="flex items-start gap-2 text-sm">
-            <UsersIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <span>
-              {props.participants.length > 0
-                ? `${props.participants.length} participante(s): ${props.participants.join(", ")}`
-                : "Nenhum participante cadastrado"}
-            </span>
-          </p>
-        </CardContent>
-        <CardFooter className="flex flex-wrap items-center gap-2 justify-start">
-          {props.resources.length === 0 ? (
-            <span className="text-xs text-muted-foreground">
-              Nenhum resource selecionado
-            </span>
-          ) : (
-            props.resources.map((item) => (
-              <Badge variant="default" key={`${props.id}-${item}`}>
-                {item}
-              </Badge>
-            ))
-          )}
-          {props.isAdmin && (
-            <div className="ml-auto inline-flex items-center gap-2">
-              <CreateRoomDialog room={props} />
-              <DeleteRoomDialog roomId={props.id} roomTitle={props.title} />
-            </div>
-          )}
-        </CardFooter>
-      </Card>
-    </div>
+          </div>
+        )}
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -193,17 +216,36 @@ export default function Home() {
   const router = useRouter();
   const { user, status, signout } = useAuth();
   const { setTheme, theme } = useTheme();
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [selectedResources, setSelectedResources] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
-  const [minParticipants, setMinParticipants] = useState<string>("");
   const [editingRoom, setEditingRoom] = useState<RoomResource | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailsRoom, setDetailsRoom] = useState<RoomResource | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [tab, setTab] = useState<"all" | "mine">("all");
+
+  const [filters, setFilters] = useQueryStates({
+    date: parseAsString,
+    q: parseAsString.withDefault(""),
+    resources: parseAsArrayOf(parseAsString).withDefault([]),
+    minParticipants: parseAsInteger,
+  });
+
+  const [searchInput, setSearchInput] = useState(filters.q);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchInput !== filters.q) {
+        setFilters({ q: searchInput || null });
+      }
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
 
   const roomsQuery = useQuery({
-    queryKey: ["rooms"],
-    queryFn: fetchRooms,
+    queryKey: ["rooms", filters, tab],
+    queryFn: () => fetchRooms(filters, tab === "mine"),
     staleTime: 1000 * 60,
+    placeholderData: keepPreviousData,
     enabled: status !== "loading",
     refetchOnMount: true,
   });
@@ -228,41 +270,9 @@ export default function Home() {
 
   const isAdmin = user?.role === "ADMIN";
 
-  const filteredRooms = useMemo(() => {
-    let rooms = roomsQuery.data ?? [];
-
-    if (date) {
-      rooms = rooms.filter((r) => isSameDay(new Date(r.startAt), date));
-    }
-
-    if (selectedResources.length > 0) {
-      rooms = rooms.filter((r) => {
-        const resources = r.resources as unknown as string[];
-        return selectedResources.some((sel) => resources.includes(sel));
-      });
-    }
-
-    const searchTerm = search.trim().toLowerCase();
-    if (searchTerm) {
-      rooms = rooms.filter((r) => {
-        if (r.title.toLowerCase().includes(searchTerm)) return true;
-        if (r.description.toLowerCase().includes(searchTerm)) return true;
-        if (r.roomName.toLowerCase().includes(searchTerm)) return true;
-        if (r.participants.some((p) => p.toLowerCase().includes(searchTerm)))
-          return true;
-        return false;
-      });
-    }
-
-    const min = Number(minParticipants);
-    if (minParticipants && !isNaN(min) && min >= 0) {
-      rooms = rooms.filter((r) => r.participants.length >= min);
-    }
-
-    return rooms.sort(
-      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
-    );
-  }, [roomsQuery.data, date, selectedResources, search, minParticipants]);
+  const selectedDate = filters.date
+    ? new Date(`${filters.date}T00:00:00`)
+    : undefined;
 
   if (status === "loading" || roomsQuery.isLoading) {
     return (
@@ -281,13 +291,11 @@ export default function Home() {
 
   return (
     <>
-      <header className="flex items-center py-4 px-10 bg-blue-900 justify-between border-b-solid border-b-black border-b-2 fixed w-full z-50 gap-4 flex-wrap">
-        <div>
-          <h1 className="font-extrabold text-white dark:text-white text-2xl md:text-3xl">
-            MeetHub
-          </h1>
-        </div>
-        <div className="hidden md:flex items-center gap-2 ml-auto mr-2">
+      <header className="fixed z-50 flex w-full flex-wrap items-center justify-between gap-4 border-b border-border bg-background/80 px-4 py-4 backdrop-blur md:px-10">
+        <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
+          MeetHub
+        </h1>
+        <div className="ml-auto mr-2 hidden items-center gap-2 md:flex">
           <Badge variant="secondary" className="gap-1.5">
             {user.role === "ADMIN" ? (
               <ShieldIcon className="size-3.5" />
@@ -298,129 +306,145 @@ export default function Home() {
               {user.role === "ADMIN" ? "Administrador" : "Usuário"}
             </span>
           </Badge>
-          <span className="text-sm text-white/90 font-medium">
+          <span className="text-sm font-medium text-muted-foreground">
             Olá, {user.username}
           </span>
         </div>
         <div className="hidden lg:block">
-          <RealTimeClock className="text-sm" />
+          <RealTimeClock className="text-sm text-muted-foreground" />
         </div>
-        <div>
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar className="size-12">
-                  <AvatarImage
-                    src="https://github.com/shadcn.png"
-                    alt={user.username}
-                  />
-                  <AvatarFallback className="bg-blue-700 text-white font-semibold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <BadgeCheckIcon />
-                  {user.username}
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <BadgeCheckIcon />
-                  {user.email}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={changeTheme}>
-                  <PaletteIcon />
-                  Trocar tema
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <BellIcon />
-                  Notificações
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signout()}>
-                <LogOutIcon />
-                Deslogar
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <Avatar className="size-10">
+                <AvatarImage
+                  src="https://github.com/shadcn.png"
+                  alt={user.username}
+                />
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuGroup>
+              <DropdownMenuItem>
+                <BadgeCheckIcon />
+                {user.username}
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+              <DropdownMenuItem>
+                <BadgeCheckIcon />
+                {user.email}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={changeTheme}>
+                <PaletteIcon />
+                Trocar tema
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <BellIcon />
+                Notificações
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => signout()}>
+              <LogOutIcon />
+              Deslogar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
-      <main className="py-6 px-10 mt-24 lg:mt-20">
-        <section className="mb-4 flex flex-wrap items-center justify-center gap-2">
-          <div className="px-2">
+      <main className="mt-24 px-4 py-6 md:px-10 lg:mt-20">
+        <Card className="mb-6">
+          <CardContent className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
             <Popover>
-              <PopoverTrigger>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  data-empty={!date}
-                  className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground w-[240px]"
+                  data-empty={!selectedDate}
+                  className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground w-full"
                 >
                   <CalendarIcon />
-                  {date ? (
-                    format(date, "PPP", { locale: ptBR })
+                  {selectedDate ? (
+                    format(selectedDate, "PPP", { locale: ptBR })
                   ) : (
                     <span>Selecione uma data</span>
                   )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar selected={date} onSelect={setDate} locale={ptBR} />
+                <Calendar
+                  selected={selectedDate}
+                  onSelect={(d) =>
+                    setFilters({ date: d ? format(d, "yyyy-MM-dd") : null })
+                  }
+                  locale={ptBR}
+                />
               </PopoverContent>
             </Popover>
-          </div>
-          <div className="px-2">
-            <SearchAutocomplete
-              options={PARTICIPANTS}
-              value={search}
-              onValueChange={setSearch}
-              placeholder="Digite para buscar reunião ou participante..."
-              emptyMessage="Nenhum resultado encontrado."
+
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Buscar reunião ou participante..."
             />
-          </div>
-          <div className="px-2 w-full md:w-[320px]">
+
             <MultiSelect
               options={ROOM_RESOURCES}
-              selected={selectedResources}
-              onChange={setSelectedResources}
+              selected={filters.resources}
+              onChange={(v) => setFilters({ resources: v.length ? v : null })}
               placeholder="Selecione os recursos..."
             />
-          </div>
-          <div className="px-2">
+
             <Input
               type="number"
               min={0}
-              value={minParticipants}
-              onChange={(e) => setMinParticipants(e.target.value)}
+              value={filters.minParticipants ?? ""}
+              onChange={(e) =>
+                setFilters({
+                  minParticipants: e.target.value
+                    ? Number(e.target.value)
+                    : null,
+                })
+              }
               placeholder="Nº mínimo de participantes"
-              className="w-[220px]"
             />
-          </div>
-          {isAdmin && (
-            <div className="px-2">
-              <CreateRoomDialog
-                open={dialogOpen}
-                onOpenChange={(next) => {
-                  setDialogOpen(next);
-                  if (!next) setEditingRoom(null);
-                }}
-                room={editingRoom}
-              />
-            </div>
-          )}
-        </section>
 
-        <section className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 border-solid border-black border rounded-lg dark:border-white min-h-[300px]">
+            {isAdmin && (
+              <div className="sm:col-span-2 lg:col-span-4">
+                <CreateRoomDialog
+                  open={dialogOpen}
+                  onOpenChange={(next) => {
+                    setDialogOpen(next);
+                    if (!next) setEditingRoom(null);
+                  }}
+                  room={editingRoom}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as "all" | "mine")}
+          className="mb-4"
+        >
+          <TabsList>
+            <TabsTrigger value="all">Todas as Salas</TabsTrigger>
+            <TabsTrigger value="mine">Minhas Salas</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <section className="grid min-h-[300px] grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {roomsQuery.isError && (
             <div className="col-span-full text-center text-sm text-destructive">
               Erro ao carregar reservas: {(roomsQuery.error as Error).message}
             </div>
           )}
-          {!roomsQuery.isError && filteredRooms.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-2">
+          {!roomsQuery.isError && (roomsQuery.data?.length ?? 0) === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
               <CalendarIcon className="size-8 opacity-40" />
               <p className="text-sm">
                 Nenhuma reserva encontrada para os filtros selecionados.
@@ -438,22 +462,31 @@ export default function Home() {
               )}
             </div>
           ) : (
-            filteredRooms.map((item) => {
-              return (
-                <CardRoom
-                  key={item.id}
-                  {...item}
-                  isAdmin={isAdmin}
-                  onEdit={(room) => {
-                    setEditingRoom(room);
-                    setDialogOpen(true);
-                  }}
-                />
-              );
-            })
+            roomsQuery.data?.map((item) => (
+              <CardRoom
+                key={item.id}
+                {...item}
+                isAdmin={isAdmin}
+                currentUserId={user.id}
+                onEdit={(room) => {
+                  setEditingRoom(room);
+                  setDialogOpen(true);
+                }}
+                onOpenDetails={(room) => {
+                  setDetailsRoom(room);
+                  setDetailsOpen(true);
+                }}
+              />
+            ))
           )}
         </section>
       </main>
+
+      <RoomDetailsDialog
+        room={detailsRoom}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
     </>
   );
 }
