@@ -8,6 +8,14 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ### Adicionado
 
+- **Restrição de agenda**: reservas só podem ser criadas em **dias úteis (segunda a sexta)**, no intervalo das **08:00 às 20:00**, considerando o horário de término da reserva.
+  - `src/backend/utility/schedule.ts`: utilitário com `isBusinessDay`, `checkSchedule`, `assertSchedule`, `scheduleViolationMessage`, `nextBusinessDay` e as constantes `BUSINESS_HOUR_START`/`BUSINESS_HOUR_END`.
+  - `RoomService.create` e `RoomService.update` chamam `assertSchedule` (fonte autoritativa, server-side).
+  - `createRoomSchema` ganhou um `refine` que devolve **400** com erro em `startAt` quando a regra é violada.
+  - `create-room.tsx` valida antes de enviar (mensagem imediata) e passou a sugerir o **próximo dia útil às 09:00** como data inicial, em vez de "amanhã" — que cairia em fim de semana.
+  - Mensagens: "Reservas só podem ser feitas de segunda a sexta (dias úteis)", "Reservas só podem começar a partir das 08:00" e "A reserva precisa terminar até as 20:00".
+- **Testes**: `schedule.spec.ts` (15 casos do utilitário), novos casos de agenda em `room.service.spec.ts` (create e update, fim de semana / antes das 08h / depois das 20h) e `schedule.route.spec.ts` (400 na API), além de `cypress/e2e/schedule.cy.ts` com 4 cenários de tela.
+
 - **Duração máxima por sala**: o limite fixo de 4 horas foi substituído por `maxDurationMinutes`, configurável por sala (15 min a 24 h). O formulário de criar/editar sala ganhou o campo "Duração máxima desta sala" e o select de duração passa a oferecer apenas opções dentro do limite da sala.
 - **Exibição do limite** no dialog de detalhes da sala ("Limite desta sala: X min").
 - **Testes**: novos casos no `room.service.spec.ts` para duração abaixo do mínimo, acima do limite padrão, acima do limite por sala, limite inválido, e validação/aumento do limite no `update`.

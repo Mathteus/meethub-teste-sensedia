@@ -17,13 +17,27 @@ vi.mock("../repository/room.repository", () => ({
 
 const service = new RoomService();
 
+/**
+ * Próximo dia útil no horário comercial, no futuro em relação a agora.
+ * Mantém as fixtures determinísticas independentemente de quando a suíte roda.
+ */
+function nextBusinessSlot(hour = 10, minute = 0): Date {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(hour, minute, 0, 0);
+  while (date.getDay() === 0 || date.getDay() === 6) {
+    date.setDate(date.getDate() + 1);
+  }
+  return date;
+}
+
 const roomRow = {
   id: "room-1",
   title: "Daily",
   roomName: "Sala Alfa",
   description: "Reunião diária",
   participants: ["maria", "joao"],
-  startAt: new Date(Date.now() + 60 * 60 * 1000),
+  startAt: nextBusinessSlot(),
   durationMinutes: 30,
   maxDurationMinutes: 240,
   resources: ["Wifi"],
@@ -37,11 +51,112 @@ const createInput = {
   roomName: "Sala Alfa",
   description: "Reunião diária",
   participants: ["maria", "joao"],
-  startAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  startAt: nextBusinessSlot().toISOString(),
   durationMinutes: 30,
   maxDurationMinutes: 240,
   resources: ["Wifi"],
 };
+
+describe("RoomService.create - regras de agenda", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  /** Próximo sábado (ou domingo) no futuro. */
+  function nextWeekend(hour = 14, minute = 0): Date {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    date.setHours(hour, minute, 0, 0);
+    while (date.getDay() !== 6) date.setDate(date.getDate() + 1);
+    return date;
+  }
+
+  it("deve criar reserva em dia útil dentro do expediente", async () => {
+    vi.mocked(roomRepository.findByRoomNameAndOverlap).mockResolvedValue([]);
+    vi.mocked(roomRepository.create).mockResolvedValue(roomRow as any);
+
+    await expect(service.create(createInput as any, "ADMIN")).resolves.toBeTruthy();
+    expect(roomRepository.create).toHaveBeenCalled();
+  });
+
+  it("deve rejeitar reserva no sábado", async () => {
+    await expect(
+      service.create(
+        { ...createInput, startAt: nextWeekend().toISOString() } as any,
+        "ADMIN",
+      ),
+    ).rejects.toThrow("dias úteis");
+    expect(roomRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("deve rejeitar reserva no domingo", async () => {
+    const sunday = nextWeekend();
+    sunday.setDate(sunday.getDate() + 1);
+    await expect(
+      service.create({ ...createInput, startAt: sunday.toISOString() } as any, "ADMIN"),
+    ).rejects.toThrow("dias úteis");
+  });
+
+  it("deve rejeitar início antes das 08:00", async () => {
+    await expect(
+      service.create(
+        { ...createInput, startAt: nextBusinessSlot(7, 0).toISOString() } as any,
+        "ADMIN",
+      ),
+    ).rejects.toThrow("08:00");
+  });
+
+  it("deve rejeitar término depois das 20:00", async () => {
+    await expect(
+      service.create(
+        {
+          ...createInput,
+          startAt: nextBusinessSlot(19, 30).toISOString(),
+          durationMinutes: 60,
+        } as any,
+        "ADMIN",
+      ),
+    ).rejects.toThrow("20:00");
+  });
+
+  it("deve rejeitar no update quando a nova data cai no fim de semana", async () => {
+    vi.mocked(roomRepository.findById).mockResolvedValue(roomRow as any);
+    await expect(
+      service.update(
+        roomRow.id,
+        { startAt: nextWeekend().toISOString() } as any,
+        "ADMIN",
+      ),
+    ).rejects.toThrow("dias úteis");
+    expect(roomRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("deve rejeitar no update quando o novo horário ultrapassa as 20:00", async () => {
+    vi.mocked(roomRepository.findById).mockResolvedValue(roomRow as any);
+    await expect(
+      service.update(
+        roomRow.id,
+        {
+          startAt: nextBusinessSlot(19, 30).toISOString(),
+          durationMinutes: 60,
+        } as any,
+        "ADMIN",
+      ),
+    ).rejects.toThrow("20:00");
+  });
+
+  it("deve permitir no update quando o novo horário é válido", async () => {
+    vi.mocked(roomRepository.findById).mockResolvedValue(roomRow as any);
+    vi.mocked(roomRepository.findByRoomNameAndOverlap).mockResolvedValue([]);
+    vi.mocked(roomRepository.update).mockResolvedValue(roomRow as any);
+
+    await expect(
+      service.update(
+        roomRow.id,
+        { startAt: nextBusinessSlot(9, 0).toISOString(), durationMinutes: 60 } as any,
+        "ADMIN",
+      ),
+    ).resolves.toBeTruthy();
+  });
+});
 
 describe("RoomService.list", () => {
   beforeEach(() => vi.clearAllMocks());

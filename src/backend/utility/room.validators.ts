@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { Recurces } from "../entity/room.types";
+import {
+  BUSINESS_HOURS_LABEL,
+  checkSchedule,
+  scheduleViolationMessage,
+} from "./schedule";
 
 const PHYSICAL_ROOMS = [
   "Sala A",
@@ -53,7 +58,23 @@ export const createRoomSchema = z
     message:
       "A duração não pode ser maior que a duração máxima permitida para a sala",
     path: ["durationMinutes"],
-  });
+  })
+  .refine(
+    (data) =>
+      checkSchedule(new Date(data.startAt), data.durationMinutes) === null,
+    {
+      message: `Reservas só podem ser feitas em dias úteis, ${BUSINESS_HOURS_LABEL}`,
+      path: ["startAt"],
+    },
+  );
+
+export function scheduleErrorFor(
+  startAt: Date,
+  durationMinutes: number,
+): string | null {
+  const violation = checkSchedule(startAt, durationMinutes);
+  return violation ? scheduleViolationMessage(violation) : null;
+}
 
 export const updateRoomSchema = z.object({
   title: baseRoomFields.title.optional(),

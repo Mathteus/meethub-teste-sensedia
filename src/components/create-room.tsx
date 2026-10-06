@@ -30,7 +30,8 @@ import {
   Option as MultiSelectOption,
 } from "@/components/ui/multi-select";
 import { Recurces } from "@/backend/entity/room.types";
-import { AVAILABLE_ROOMS } from "@/backend/utility/room.validators";
+import { AVAILABLE_ROOMS, scheduleErrorFor } from "@/backend/utility/room.validators";
+import { nextBusinessDay } from "@/backend/utility/schedule";
 import { useAuth } from "@/lib/auth/auth-provider";
 import {
   Select,
@@ -121,10 +122,10 @@ function toDateAndTime(iso: string): { date: string; time: string } {
 }
 
 function emptyForm(): RoomFormData {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(9, 0, 0, 0);
-  const { date, time } = toDateAndTime(tomorrow.toISOString());
+  // Reservas só existem em dias úteis: sugere o próximo dia útil às 09:00
+  const suggested = nextBusinessDay(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  suggested.setHours(9, 0, 0, 0);
+  const { date, time } = toDateAndTime(suggested.toISOString());
   return {
     title: "",
     roomName: AVAILABLE_ROOMS[0],
@@ -270,6 +271,8 @@ export function CreateRoomDialog({
       return "A duração máxima da sala deve ser entre 15 min e 24 horas";
     if (duration > maxDuration)
       return `A duração não pode passar de ${maxDuration} minutos (limite desta sala)`;
+    const scheduleError = scheduleErrorFor(startDate, duration);
+    if (scheduleError) return scheduleError;
     return null;
   }
 

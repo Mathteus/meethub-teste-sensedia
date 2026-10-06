@@ -4,6 +4,7 @@ import { roomRepository } from "../repository/room.repository";
 import type { CreateRoomInput, UpdateRoomInput } from "../utility/room.validators";
 import type { RoomSelect } from "../database/schema/rooms";
 import type { Role } from "../entity/account.entity";
+import { assertSchedule } from "../utility/schedule";
 
 function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60 * 1000);
@@ -81,6 +82,7 @@ export class RoomService {
 
     const maxDurationMinutes = input.maxDurationMinutes ?? 240;
     validateDuration(input.durationMinutes, maxDurationMinutes);
+    assertSchedule(date, input.durationMinutes);
 
     const room = new Room({
       title: input.title,
@@ -151,6 +153,7 @@ export class RoomService {
     const maxDurationMinutes =
       input.maxDurationMinutes ?? existing.maxDurationMinutes ?? 240;
     validateDuration(durationMinutes, maxDurationMinutes);
+    assertSchedule(startAt, durationMinutes);
 
     const endAt = addMinutes(startAt, durationMinutes);
 
