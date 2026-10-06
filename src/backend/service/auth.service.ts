@@ -1,7 +1,7 @@
 import { Account, Role } from "../entity/account.entity";
 import { accountRepository } from "../repository/account.repository";
 import { hashPassword, verifyPassword } from "../utility/hash";
-import { signJWT, type JWTPayload } from "../utility/jwt";
+import { signJWT } from "../utility/jwt";
 import type { SigninInput, SignupInput } from "../utility/auth.validators";
 
 export interface AuthResult {

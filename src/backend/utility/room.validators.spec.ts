@@ -6,7 +6,20 @@ import {
 import { Recurces } from "../entity/room.types";
 
 describe("Room Validators - maxDurationMinutes logic", () => {
-  const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  /**
+   * Próximo dia útil no horário comercial, no futuro em relação a agora.
+   * Determinístico: "agora + 24h" dependeria da hora em que a suíte roda e
+   * cairia fora da janela 08:00-20:00.
+   */
+  const futureDate = (() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    date.setHours(10, 0, 0, 0);
+    while (date.getDay() === 0 || date.getDay() === 6) {
+      date.setDate(date.getDate() + 1);
+    }
+    return date;
+  })();
 
   it("deve aceitar criação de sala com duração dentro do limite específico da sala", () => {
     const input = {

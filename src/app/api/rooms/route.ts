@@ -29,7 +29,10 @@ export async function GET(req: Request) {
     }
 
     const hasFilters =
-      date || q || resources || (minParticipants !== null && !isNaN(minParticipants));
+      date ||
+      q ||
+      resources ||
+      (minParticipants !== null && !isNaN(minParticipants));
 
     const rooms = hasFilters
       ? await roomService.listFiltered({
@@ -54,10 +57,7 @@ export async function POST(req: Request) {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json(
-        { message: "Não autenticado" },
-        { status: 401 },
-      );
+      return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -90,7 +90,9 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Erro interno";
     const status = message.startsWith("Acesso negado")
       ? 403
-      : message.includes("Conflito") || message.includes("passado") || message.includes("Duração")
+      : message.includes("Conflito") ||
+          message.includes("passado") ||
+          message.includes("Duração")
         ? 409
         : 400;
     return NextResponse.json({ message }, { status });

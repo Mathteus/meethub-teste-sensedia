@@ -9,7 +9,10 @@ export async function GET() {
   }
   const account = await authService.me(session.sub);
   if (!account) {
-    return NextResponse.json({ message: "Conta não encontrada" }, { status: 401 });
+    return NextResponse.json(
+      { message: "Conta não encontrada" },
+      { status: 401 },
+    );
   }
   return NextResponse.json({ account }, { status: 200 });
 }

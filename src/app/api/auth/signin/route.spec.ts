@@ -43,7 +43,10 @@ describe("POST /api/auth/signin", () => {
       role: "USER",
       createdAt: new Date(),
     };
-    vi.mocked(authService.signin).mockResolvedValue({ account, token: "token" });
+    vi.mocked(authService.signin).mockResolvedValue({
+      account,
+      token: "token",
+    });
 
     const res = await POST(
       makeRequest({ email: "test@mail.com", password: "@Test123" }),
@@ -70,7 +73,10 @@ describe("POST /api/auth/signin", () => {
       role: "ADMIN",
       createdAt: new Date(),
     };
-    vi.mocked(authService.signin).mockResolvedValue({ account, token: "token" });
+    vi.mocked(authService.signin).mockResolvedValue({
+      account,
+      token: "token",
+    });
 
     const res = await POST(
       makeRequest({ email: "admin@mail.com", password: "@Test123" }),

@@ -90,9 +90,15 @@ export function DeleteRoomDialog({
           </div>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel
+            disabled={loading}
+            size={undefined}
+            variant={undefined}
+          >
+            Cancelar
+          </AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
+            onClick={(e: { preventDefault: () => void }) => {
               e.preventDefault();
               handleDelete();
             }}

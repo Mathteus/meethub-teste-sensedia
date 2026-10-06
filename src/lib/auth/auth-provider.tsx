@@ -28,6 +28,7 @@ interface AuthContextValue {
   signout: () => Promise<void>;
   signinError: string | null;
   signupError: string | null;
+  isAdmin: boolean;
 }
 
 const AuthContext = React.createContext<AuthContextValue | undefined>(
@@ -152,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signout: () => signoutMutation.mutateAsync(),
     signinError,
     signupError,
+    isAdmin: meQuery.data?.role === "ADMIN",
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

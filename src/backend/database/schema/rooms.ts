@@ -19,7 +19,10 @@ export const rooms = pgTable("rooms", {
   roomName: varchar("room_name", { length: 100 }).notNull(),
   description: text("description").notNull().default(""),
   participants: text("participants").array().notNull().default([]),
-  startAt: timestamp("start_at", { mode: "date", withTimezone: true }).notNull(),
+  startAt: timestamp("start_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
   durationMinutes: integer("duration_minutes").notNull(),
   maxDurationMinutes: integer("max_duration_minutes").notNull().default(240),
   resources: varchar("resources", { enum: RECURCES_VALUES })

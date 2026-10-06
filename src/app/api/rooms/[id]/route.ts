@@ -12,7 +12,10 @@ export async function GET(
     const { id } = await ctx.params;
     const room = await roomService.getById(id);
     if (!room) {
-      return NextResponse.json({ message: "Sala não encontrada" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Sala não encontrada" },
+        { status: 404 },
+      );
     }
     return NextResponse.json({ room }, { status: 200 });
   } catch (err) {
@@ -45,18 +48,26 @@ export async function PATCH(
 
     const account = await authService.me(session.sub);
     if (!account) {
-      return NextResponse.json({ message: "Conta não encontrada" }, { status: 401 });
+      return NextResponse.json(
+        { message: "Conta não encontrada" },
+        { status: 401 },
+      );
     }
     const room = await roomService.update(id, parsed.data, account.role);
     if (!room) {
-      return NextResponse.json({ message: "Sala não encontrada" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Sala não encontrada" },
+        { status: 404 },
+      );
     }
     return NextResponse.json({ room }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
     const status = message.startsWith("Acesso negado")
       ? 403
-      : message.includes("Conflito") || message.includes("passado") || message.includes("Duração")
+      : message.includes("Conflito") ||
+          message.includes("passado") ||
+          message.includes("Duração")
         ? 409
         : message.includes("não encontrada")
           ? 404
@@ -77,7 +88,10 @@ export async function DELETE(
     const { id } = await ctx.params;
     const account = await authService.me(session.sub);
     if (!account) {
-      return NextResponse.json({ message: "Conta não encontrada" }, { status: 401 });
+      return NextResponse.json(
+        { message: "Conta não encontrada" },
+        { status: 401 },
+      );
     }
     await roomService.remove(id, account.role, session.sub);
     return NextResponse.json({ ok: true }, { status: 200 });

@@ -1,7 +1,10 @@
 import { Room } from "../entity/room";
 import { Recurces } from "../entity/room.types";
 import { roomRepository } from "../repository/room.repository";
-import type { CreateRoomInput, UpdateRoomInput } from "../utility/room.validators";
+import type {
+  CreateRoomInput,
+  UpdateRoomInput,
+} from "../utility/room.validators";
 import type { RoomSelect } from "../database/schema/rooms";
 import type { Role } from "../entity/account.entity";
 import { assertSchedule } from "../utility/schedule";
@@ -30,13 +33,17 @@ function serializeRoom(r: RoomSelect) {
 
 function ensureAdmin(role: Role | "USER" | "ADMIN" | undefined) {
   if (role !== "ADMIN") {
-    throw new Error("Acesso negado: apenas administradores podem gerenciar salas");
+    throw new Error(
+      "Acesso negado: apenas administradores podem gerenciar salas",
+    );
   }
 }
 
 function validateDuration(durationMinutes: number, maxDurationMinutes: number) {
   if (maxDurationMinutes < 15 || maxDurationMinutes > 1440) {
-    throw new Error("Duração máxima da sala deve ser entre 15 minutos e 24 horas");
+    throw new Error(
+      "Duração máxima da sala deve ser entre 15 minutos e 24 horas",
+    );
   }
   if (durationMinutes < 15) {
     throw new Error("Duração mínima é de 15 minutos");
@@ -54,7 +61,9 @@ export class RoomService {
     return rows.map(serializeRoom);
   }
 
-  async listFiltered(filters: Parameters<typeof roomRepository.findFiltered>[0]) {
+  async listFiltered(
+    filters: Parameters<typeof roomRepository.findFiltered>[0],
+  ) {
     const rows = await roomRepository.findFiltered(filters);
     return rows.map(serializeRoom);
   }
@@ -139,12 +148,18 @@ export class RoomService {
     const roomName = input.roomName ?? existing.roomName;
     const title = input.title ?? existing.title;
     const description =
-      input.description !== undefined ? input.description : existing.description;
+      input.description !== undefined
+        ? input.description
+        : existing.description;
     const participants =
-      input.participants !== undefined ? input.participants : existing.participants;
-    const resources = (input.resources !== undefined
-      ? input.resources
-      : (existing.resources as Recurces[])) as Recurces[];
+      input.participants !== undefined
+        ? input.participants
+        : existing.participants;
+    const resources = (
+      input.resources !== undefined
+        ? input.resources
+        : (existing.resources as Recurces[])
+    ) as Recurces[];
 
     if (startAt.getTime() <= Date.now() - 30 * 1000) {
       throw new Error("Não é possível agendar uma reserva no passado");
@@ -170,7 +185,7 @@ export class RoomService {
       );
     }
 
-    const _ = new Room({
+    /*const _ = new Room({
       id: existing.id,
       title,
       description,
@@ -178,7 +193,7 @@ export class RoomService {
       date: startAt,
       resource: resources,
       duration: durationMinutes,
-    });
+    });*/
 
     const updated = await roomRepository.update(existing.id, {
       title,

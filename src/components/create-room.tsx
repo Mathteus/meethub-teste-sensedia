@@ -30,7 +30,10 @@ import {
   Option as MultiSelectOption,
 } from "@/components/ui/multi-select";
 import { Recurces } from "@/backend/entity/room.types";
-import { AVAILABLE_ROOMS, scheduleErrorFor } from "@/backend/utility/room.validators";
+import {
+  AVAILABLE_ROOMS,
+  scheduleErrorFor,
+} from "@/backend/utility/room.validators";
 import { nextBusinessDay } from "@/backend/utility/schedule";
 import { useAuth } from "@/lib/auth/auth-provider";
 import {
@@ -40,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { ChangeEvent, KeyboardEvent } from "react";
 
 export interface RoomResource {
   id: string;
@@ -258,19 +262,25 @@ export function CreateRoomDialog({
   }
 
   function validateForm(form: RoomFormData): string | null {
-    if (!form.title.trim() || form.title.trim().length < 3)
+    if (!form.title.trim() || form.title.trim().length < 3) {
       return "Nome da reunião deve ter pelo menos 3 caracteres";
+    }
     if (!form.roomName) return "Selecione uma sala";
     if (!form.startDate || !form.startTime) return "Informe data e hora";
+
     const startDate = new Date(`${form.startDate}T${form.startTime}:00`);
     if (isNaN(startDate.getTime())) return "Data/hora inválida";
+
     const duration = Number(form.durationMinutes);
     const maxDuration = Number(form.maxDurationMinutes);
     if (duration < 15) return "Duração mínima é de 15 minutos";
-    if (maxDuration < 15 || maxDuration > 1440)
+    if (maxDuration < 15 || maxDuration > 1440) {
       return "A duração máxima da sala deve ser entre 15 min e 24 horas";
-    if (duration > maxDuration)
+    }
+    if (duration > maxDuration) {
       return `A duração não pode passar de ${maxDuration} minutos (limite desta sala)`;
+    }
+
     const scheduleError = scheduleErrorFor(startDate, duration);
     if (scheduleError) return scheduleError;
     return null;
@@ -360,7 +370,9 @@ export function CreateRoomDialog({
                 id="title"
                 placeholder="Ex: Reunião de equipe"
                 value={form.title}
-                onChange={(e) => updateField("title", e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  updateField("title", e.target.value)
+                }
               />
             </Field>
 
@@ -368,7 +380,9 @@ export function CreateRoomDialog({
               <Label htmlFor="roomName">Sala física</Label>
               <Select
                 value={form.roomName}
-                onValueChange={(value) => updateField("roomName", value as any)}
+                onValueChange={(value) =>
+                  updateField("roomName", String(value))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a sala" />
@@ -397,7 +411,9 @@ export function CreateRoomDialog({
                   id="startDate"
                   type="date"
                   value={form.startDate}
-                  onChange={(e) => updateField("startDate", e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    updateField("startDate", e.target.value)
+                  }
                 />
               </InputGroup>
             </Field>
@@ -411,7 +427,9 @@ export function CreateRoomDialog({
                   id="startTime"
                   type="time"
                   value={form.startTime}
-                  onChange={(e) => updateField("startTime", e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    updateField("startTime", e.target.value)
+                  }
                 />
               </InputGroup>
             </Field>
@@ -420,10 +438,13 @@ export function CreateRoomDialog({
               <Select
                 value={String(form.durationMinutes)}
                 onValueChange={(value) =>
-                  updateField("durationMinutes", Number(value) as any)
+                  updateField("durationMinutes", Number(value))
                 }
               >
-                <SelectTrigger id="duration-trigger" data-testid="duration-trigger">
+                <SelectTrigger
+                  id="duration-trigger"
+                  data-testid="duration-trigger"
+                >
                   <SelectValue placeholder="Selecione a duração" />
                 </SelectTrigger>
                 <SelectContent>
@@ -443,7 +464,8 @@ export function CreateRoomDialog({
             <Label htmlFor="maxDuration">
               Duração máxima desta sala
               <span className="ml-1 text-xs font-normal text-muted-foreground">
-                (limite de reserva: {formatMinutes(Number(form.maxDurationMinutes))})
+                (limite de reserva:{" "}
+                {formatMinutes(Number(form.maxDurationMinutes))})
               </span>
             </Label>
             <Select
@@ -459,7 +481,10 @@ export function CreateRoomDialog({
                 }));
               }}
             >
-              <SelectTrigger id="max-duration-trigger" data-testid="max-duration-trigger">
+              <SelectTrigger
+                id="max-duration-trigger"
+                data-testid="max-duration-trigger"
+              >
                 <SelectValue placeholder="Selecione o limite da sala" />
               </SelectTrigger>
               <SelectContent>
@@ -479,7 +504,9 @@ export function CreateRoomDialog({
               rows={3}
               placeholder="Informações adicionais sobre a reunião..."
               value={form.description}
-              onChange={(e) => updateField("description", e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                updateField("description", e.target.value)
+              }
             />
           </Field>
 
@@ -494,11 +521,11 @@ export function CreateRoomDialog({
                   type="email"
                   placeholder="adicionar email e pressione enter ou clique em adicionar"
                   value={participantInput}
-                  onChange={(e) => {
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     setParticipantInput(e.target.value);
                     if (participantError) setParticipantError(null);
                   }}
-                  onKeyDown={(e) => {
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       addParticipant();
@@ -512,9 +539,7 @@ export function CreateRoomDialog({
             </div>
             <FieldError
               errors={[
-                participantError
-                  ? ({ message: participantError } as any)
-                  : undefined,
+                participantError ? { message: participantError } : undefined,
               ]}
             />
             {form.participants.length > 0 && (
@@ -543,8 +568,8 @@ export function CreateRoomDialog({
             <MultiSelect
               options={RESOURCES_OPTIONS}
               selected={form.resources as unknown as string[]}
-              onChange={(sel) =>
-                updateField("resources", sel as unknown as Recurces[])
+              onChange={(sel: string[]) =>
+                updateField("resources", sel as Recurces[])
               }
               placeholder="Selecione os recursos..."
               className="w-full"

@@ -91,14 +91,20 @@ describe("POST /api/rooms - regras de agenda", () => {
   });
 
   it("retorna 400 para início antes das 08:00", async () => {
-    const res = await POST(request({ ...validBody, startAt: nextBusinessSlot(7) }));
+    const res = await POST(
+      request({ ...validBody, startAt: nextBusinessSlot(7) }),
+    );
     expect(res.status).toBe(400);
     expect(roomService.create).not.toHaveBeenCalled();
   });
 
   it("retorna 400 quando a reserva terminaria depois das 20:00", async () => {
     const res = await POST(
-      request({ ...validBody, startAt: nextBusinessSlot(19, 30), durationMinutes: 60 }),
+      request({
+        ...validBody,
+        startAt: nextBusinessSlot(19, 30),
+        durationMinutes: 60,
+      }),
     );
     expect(res.status).toBe(400);
     expect(roomService.create).not.toHaveBeenCalled();

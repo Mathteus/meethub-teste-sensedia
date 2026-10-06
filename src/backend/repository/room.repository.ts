@@ -85,9 +85,7 @@ export class RoomRepository implements IRoomRepository {
     if (filters.resources && filters.resources.length > 0) {
       conds.push(
         or(
-          ...filters.resources.map(
-            (r) => sql`${r} = ANY(${table.resources})`,
-          ),
+          ...filters.resources.map((r) => sql`${r} = ANY(${table.resources})`),
         ),
       );
     }

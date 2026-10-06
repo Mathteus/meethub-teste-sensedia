@@ -46,7 +46,11 @@ describe("POST /api/auth/signup", () => {
 
   it("deve retornar 400 quando a senha é fraca", async () => {
     const res = await POST(
-      makeRequest({ ...validBody, password: "fraca", confirmPassword: "fraca" }),
+      makeRequest({
+        ...validBody,
+        password: "fraca",
+        confirmPassword: "fraca",
+      }),
     );
     expect(res.status).toBe(400);
     expect(authService.signup).not.toHaveBeenCalled();
@@ -60,7 +64,10 @@ describe("POST /api/auth/signup", () => {
       role: "USER",
       createdAt: new Date(),
     };
-    vi.mocked(authService.signup).mockResolvedValue({ account, token: "token" });
+    vi.mocked(authService.signup).mockResolvedValue({
+      account,
+      token: "token",
+    });
 
     const res = await POST(makeRequest(validBody));
 
@@ -85,10 +92,18 @@ describe("POST /api/auth/signup", () => {
       role: "ADMIN",
       createdAt: new Date(),
     };
-    vi.mocked(authService.signup).mockResolvedValue({ account, token: "token" });
+    vi.mocked(authService.signup).mockResolvedValue({
+      account,
+      token: "token",
+    });
 
     const res = await POST(
-      makeRequest({ ...validBody, username: "admin", email: "admin@mail.com", role: "ADMIN" }),
+      makeRequest({
+        ...validBody,
+        username: "admin",
+        email: "admin@mail.com",
+        role: "ADMIN",
+      }),
     );
 
     expect(res.status).toBe(201);
@@ -110,7 +125,10 @@ describe("POST /api/auth/signup", () => {
       role: "USER",
       createdAt: new Date(),
     };
-    vi.mocked(authService.signup).mockResolvedValue({ account, token: "token" });
+    vi.mocked(authService.signup).mockResolvedValue({
+      account,
+      token: "token",
+    });
 
     const res = await POST(makeRequest(validBody));
 

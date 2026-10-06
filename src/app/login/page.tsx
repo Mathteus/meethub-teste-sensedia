@@ -14,15 +14,15 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Field, FieldError } from "@/components/ui/field";
+import { Button } from "@/app/components/ui/button";
+import { Label } from "@/app/components/ui/label";
+import { Field, FieldError } from "@/app/components/ui/field";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@/components/ui/input-group";
+} from "@/app/components/ui/input-group";
 import { useAuth } from "@/lib/auth/auth-provider";
 import {
   Card,
@@ -30,7 +30,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/app/components/ui/card";
 
 const signinSchema = z.object({
   email: z.string().email("E-mail inválido"),

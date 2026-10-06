@@ -9,10 +9,7 @@ export async function POST(
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json(
-        { message: "Não autenticado" },
-        { status: 401 },
-      );
+      return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
     }
     const { id } = await ctx.params;
     const room = await roomService.join(id, session.username);
